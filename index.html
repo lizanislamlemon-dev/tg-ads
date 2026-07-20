@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Mini App - Monetag Ads</title>
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Monetag SDK (আপনার দেওয়া কোড) -->
+    <script src='//libtl.com/sdk.js' data-zone='11361400' data-sdk='show_11361400'></script>
+
+    <style>
+        /* টেলিগ্রাম থিমের সাথে সামঞ্জস্যপূর্ণ ডিজাইন */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .user-info {
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .user-info h3 {
+            margin: 0 0 10px 0;
+            color: var(--tg-theme-button-color, #2481cc);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 12px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        .btn:active {
+            opacity: 0.8;
+        }
+
+        .btn-secondary {
+            background-color: #28a745; /* সবুজ রঙ রিওয়ার্ডেড পপ-আপের জন্য */
+            color: #ffffff;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- ব্যবহারকারীর তথ্য দেখার জায়গা -->
+        <div class="user-info">
+            <h3 id="welcome-msg">স্বাগতম!</h3>
+            <p>আপনার ব্যালেন্স: <span id="balance">০</span> পয়েন্ট</p>
+        </div>
+
+        <!-- বিজ্ঞাপন দেখার বাটনসমূহ -->
+        <button class="btn" onclick="showRewardedInterstitial()">Rewarded Interstitial দেখুন</button>
+        <button class="btn btn-secondary" onclick="showRewardedPopup()">Rewarded Popup দেখুন</button>
+
+        <div class="footer">
+            Monetag Ad Integration Test
+        </div>
+    </div>
+
+    <script>
+        // টেলিগ্রাম ওয়েব অ্যাপ ইনিশিয়ালাইজেশন
+        const tele = window.Telegram.WebApp;
+        tele.ready();
+        tele.expand(); // অ্যাপটি স্ক্রিন জুড়ে বড় করার জন্য
+
+        // ব্যবহারকারীর নাম সেট করা
+        const user = tele.initDataUnsafe?.user;
+        if (user) {
+            document.getElementById('welcome-msg').innerText = `হ্যালো, ${user.first_name || 'ইউজার'}!`;
+        }
+
+        // পয়েন্ট বা ব্যালেন্স ট্র্যাকিং (লোকাল স্টোরেজ ব্যবহার করে)
+        let currentBalance = parseInt(localStorage.getItem('user_points')) || 0;
+        document.getElementById('balance').innerText = currentBalance;
+
+        function updateBalance(points) {
+            currentBalance += points;
+            localStorage.setItem('user_points', currentBalance);
+            document.getElementById('balance').innerText = currentBalance;
+        }
+
+        // ১. Rewarded Interstitial Ad Function
+        function showRewardedInterstitial() {
+            if (typeof show_11361400 === 'function') {
+                show_11361400().then(() => {
+                    // সফলভাবে বিজ্ঞাপন দেখলে পয়েন্ট যোগ হবে
+                    updateBalance(10); 
+                    alert('অভিনন্দন! আপনি ১০ পয়েন্ট পেয়েছেন।');
+                }).catch(err => {
+                    console.error('Ad failed to load:', err);
+                    alert('বিজ্ঞাপনটি লোড করা যায়নি। আবার চেষ্টা করুন।');
+                });
+            } else {
+                alert('বিজ্ঞাপন সার্ভিস এখন উপলব্ধ নয়।');
+            }
+        }
+
+        // ২. Rewarded Popup Ad Function
+        function showRewardedPopup() {
+            if (typeof show_11361400 === 'function') {
+                show_11361400('pop').then(() => {
+                    // সফলভাবে পপ-আপ দেখলে পয়েন্ট যোগ হবে
+                    updateBalance(15);
+                    alert('অভিনন্দন! আপনি ১৫ পয়েন্ট পেয়েছেন।');
+                }).catch(e => {
+                    console.error('Error playing popup ad:', e);
+                });
+            } else {
+                alert('বিজ্ঞাপন সার্ভিস এখন উপলব্ধ নয়।');
+            }
+        }
+
+        // ৩. In-App Interstitial (স্বয়ংক্রিয়ভাবে ব্যাকগ্রাউন্ডে চলবে)
+        window.addEventListener('load', () => {
+            if (typeof show_11361400 === 'function') {
+                show_11361400({
+                    type: 'inApp',
+                    inAppSettings: {
+                        frequency: 2,
+                        capping: 0.1,
+                        interval: 30,
+                        timeout: 5,
+                        everyPage: false
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
