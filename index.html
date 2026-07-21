@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Mini App - Secured Monetag Ads</title>
+    <title>Telegram Mini App - Secured Ads</title>
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -40,8 +40,14 @@
         }
 
         .user-info h3 {
-            margin: 0 0 10px 0;
+            margin: 0 0 5px 0;
             color: var(--tg-theme-button-color, #2481cc);
+        }
+
+        .tg-id {
+            font-size: 12px;
+            color: gray;
+            margin-bottom: 15px;
         }
 
         .btn {
@@ -80,18 +86,19 @@
 <body>
 
     <div class="container">
-        <!-- ব্যবহারকারীর তথ্য -->
+        <!-- ব্যবহারকারীর তথ্য ও ইউনিক টেলিগ্রাম আইডি -->
         <div class="user-info">
             <h3 id="welcome-msg">স্বাগতম!</h3>
+            <div class="tg-id">ID: <span id="user-id">Loading...</span></div>
             <p>আপনার ব্যালেন্স: <span id="balance">০</span> পয়েন্ট</p>
         </div>
 
         <!-- বিজ্ঞাপন বাটনসমূহ -->
-        <button id="ri-btn" class="btn" onclick="showRewardedInterstitial()">Rewarded Interstitial দেখুন</button>
-        <button id="rp-btn" class="btn btn-secondary" onclick="showRewardedPopup()">Rewarded Popup দেখুন</button>
+        <button id="ri-btn" class="btn" onclick="startAdTimer('ri')">Rewarded Interstitial দেখুন</button>
+        <button id="rp-btn" class="btn btn-secondary" onclick="startAdTimer('pop')">Rewarded Popup দেখুন</button>
 
         <div class="footer">
-            Monetag Secured Ad Integration
+            Monetag Secured Integration v2
         </div>
     </div>
 
@@ -101,13 +108,16 @@
         tele.ready();
         tele.expand();
 
-        // ব্যবহারকারীর নাম সেট করা
+        // টেলিগ্রাম ইউজার আইডি এবং নাম প্রদর্শন
         const user = tele.initDataUnsafe?.user;
         if (user) {
             document.getElementById('welcome-msg').innerText = `হ্যালো, ${user.first_name || 'ইউজার'}!`;
+            document.getElementById('user-id').innerText = user.id; // টেলিগ্রাম আইডি
+        } else {
+            document.getElementById('user-id').innerText = "টেলিগ্রামের বাইরে থেকে খেলছেন";
         }
 
-        // ব্যালেন্স ট্র্যাকিং
+        // লোকাল ব্যালেন্স ট্র্যাকিং
         let currentBalance = parseInt(localStorage.getItem('user_points')) || 0;
         document.getElementById('balance').innerText = currentBalance;
 
@@ -117,90 +127,64 @@
             document.getElementById('balance').innerText = currentBalance;
         }
 
-        // বিজ্ঞপ্তির স্থিতি ট্র্যাকিং ভেরিয়েবল
-        let isAdActive = false;
+        // বিজ্ঞপ্তির স্থিতি ট্র্যাকিং
+        let isAdRunning = false;
 
-        // ১. Secured Rewarded Interstitial
-        function showRewardedInterstitial() {
-            if (isAdActive) return;
+        // টাইমার ও অ্যাড হ্যান্ডলার ফাংশন (উভয় অ্যাডের জন্য এক লজিক)
+        function startAdTimer(adType) {
+            if (isAdRunning) return;
 
-            const btn = document.getElementById('ri-btn');
-            isAdActive = true;
+            const btn = adType === 'ri' ? document.getElementById('ri-btn') : document.getElementById('rp-btn');
+            const originalText = btn.innerText;
+            
+            isAdRunning = true;
             btn.disabled = true;
             btn.innerText = "বিজ্ঞাপন লোড হচ্ছে...";
 
-            // বিজ্ঞাপন চালু করার সময় রেকর্ড করা হচ্ছে
-            const startTime = Date.now();
-
+            // ১. মনিট্যাগ বিজ্ঞাপনটি ট্রিগার করা
             if (typeof show_11361400 === 'function') {
-                show_11361400().then(() => {
-                    const endTime = Date.now();
-                    const secondsWatched = (endTime - startTime) / 1000;
+                
+                // ইন্টারস্টিশিয়াল বা পপআপ ট্রিম করা
+                const adPromise = adType === 'ri' ? show_11361400() : show_11361400('pop');
 
-                    // যদি ইউজার ১৫ সেকেন্ডের কম সময় বিজ্ঞাপনটি স্ক্রিনে রাখে
-                    if (secondsWatched < 15) {
-                        alert('আপনি বিজ্ঞাপনটি খুব দ্রুত বন্ধ করে দিয়েছেন। পয়েন্ট পেতে অন্তত ১৫ সেকেন্ড বিজ্ঞাপনটি স্ক্রিনে রাখুন।');
-                    } else {
-                        updateBalance(10); // সফলভাবে দেখলে ১০ পয়েন্ট
-                        alert('অভিনন্দন! আপনি ১০ পয়েন্ট পেয়েছেন।');
-                    }
-                    
-                    resetButton(btn, "Rewarded Interstitial দেখুন");
-                }).catch(err => {
-                    console.error('Ad failed to load:', err);
-                    alert('বিজ্ঞাপনটি লোড করা যায়নি। আবার চেষ্টা করুন।');
-                    resetButton(btn, "Rewarded Interstitial দেখুন");
-                });
-            } else {
-                alert('বিজ্ঞাপন সার্ভিস এখন উপলব্ধ নয়।');
-                resetButton(btn, "Rewarded Interstitial দেখুন");
-            }
-        }
-
-        // ২. Secured Rewarded Popup
-        function showRewardedPopup() {
-            if (isAdActive) return;
-
-            const btn = document.getElementById('rp-btn');
-            isAdActive = true;
-            btn.disabled = true;
-            btn.innerText = "বিজ্ঞাপন লোড হচ্ছে...";
-
-            // বিজ্ঞাপন চালু করার সময় রেকর্ড করা হচ্ছে
-            const startTime = Date.now();
-
-            if (typeof show_11361400 === 'function') {
-                show_11361400('pop').then(() => {
-                    const endTime = Date.now();
-                    const secondsWatched = (endTime - startTime) / 1000;
-
-                    // যদি ইউজার ১৫ সেকেন্ডের কম সময় বিজ্ঞাপনটি স্ক্রিনে রাখে
-                    if (secondsWatched < 15) {
-                        alert('আপনি বিজ্ঞাপনটি খুব দ্রুত বন্ধ করে দিয়েছেন। পয়েন্ট পেতে অন্তত ১৫ সেকেন্ড বিজ্ঞাপনটি স্ক্রিনে রাখুন।');
-                    } else {
-                        updateBalance(15); // সফলভাবে দেখলে ১৫ পয়েন্ট
-                        alert('অভিনন্দন! আপনি ১৫ পয়েন্ট পেয়েছেন।');
-                    }
-
-                    resetButton(btn, "Rewarded Popup দেখুন");
+                adPromise.then(() => {
+                    console.log("Ad triggered successfully");
                 }).catch(e => {
-                    console.error('Error playing popup ad:', e);
-                    resetButton(btn, "Rewarded Popup দেখুন");
+                    console.error("Ad loading error", e);
                 });
+
+                // ২. বাটনে ১৫ সেকেন্ডের একটি কাউন্টডাউন শুরু করা (এটি নিশ্চিত করবে ইউজার ব্যাক বাটনে চাপলেও টাইমার শেষ না হওয়া পর্যন্ত পয়েন্ট পাবে না)
+                let timeLeft = 15; // ১৫ সেকেন্ডের টাইমার
+                btn.innerText = `অপেক্ষা করুন (${timeLeft}s)`;
+
+                const countdown = setInterval(() => {
+                    timeLeft--;
+                    btn.innerText = `অপেক্ষা করুন (${timeLeft}s)`;
+
+                    if (timeLeft <= 0) {
+                        clearInterval(countdown);
+                        
+                        // নির্দিষ্ট রিওয়ার্ড যোগ করা
+                        const rewardPoints = adType === 'ri' ? 10 : 15;
+                        updateBalance(rewardPoints);
+                        alert(`অভিনন্দন! আপনি ${rewardPoints} পয়েন্ট পেয়েছেন।`);
+                        
+                        // বাটন স্বাভাবিক অবস্থায় ফিরিয়ে আনা
+                        isAdRunning = false;
+                        btn.disabled = false;
+                        btn.innerText = originalText;
+                    }
+                }, 1000);
+
             } else {
                 alert('বিজ্ঞাপন সার্ভিস এখন উপলব্ধ নয়।');
-                resetButton(btn, "Rewarded Popup দেখুন");
+                isAdRunning = false;
+                btn.disabled = false;
+                btn.innerText = originalText;
             }
         }
 
-        // বাটন সচল করার হেল্পার ফাংশন
-        function resetButton(buttonElement, originalText) {
-            isAdActive = false;
-            buttonElement.disabled = false;
-            buttonElement.innerText = originalText;
-        }
-
-        // ৩. In-App Interstitial (ব্যাকগ্রাউন্ডে স্বয়ংক্রিয়ভাবে চলবে)
+        // ৩. In-App Interstitial (ব্যাকগ্রাউন্ড অটো-অ্যাড)
         window.addEventListener('load', () => {
             if (typeof show_11361400 === 'function') {
                 show_11361400({
