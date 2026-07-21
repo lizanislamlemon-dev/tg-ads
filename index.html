@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Mini App - Advanced IP Lock Ads</title>
+    <title>Telegram Mini App - Single Ad IP Lock</title>
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -84,11 +84,6 @@
             cursor: not-allowed;
         }
 
-        .btn-secondary {
-            background-color: #28a745;
-            color: #ffffff;
-        }
-
         .footer {
             margin-top: 30px;
             font-size: 12px;
@@ -112,12 +107,11 @@
             আজকের বিজ্ঞাপন বাকি আছে: Loading...
         </div>
 
-        <!-- বিজ্ঞাপন বাটনসমূহ -->
-        <button id="ri-btn" class="btn" disabled onclick="startAdProcess('ri')">Verifying Device...</button>
-        <button id="rp-btn" class="btn btn-secondary" disabled onclick="startAdProcess('pop')">Verifying Device...</button>
+        <!-- শুধুমাত্র একটি বিজ্ঞাপন বাটন -->
+        <button id="ri-btn" class="btn" disabled onclick="startAdProcess()">Verifying Device...</button>
 
         <div class="footer">
-            Monetag Anti-Cheat System v4
+            Monetag Anti-Cheat System v5
         </div>
     </div>
 
@@ -126,7 +120,7 @@
         tele.ready();
         tele.expand();
 
-        // টেলিগ্রাম ডাটা সেটআপ
+        // ব্যবহারকারী তথ্য লোড
         const user = tele.initDataUnsafe?.user;
         if (user) {
             document.getElementById('welcome-msg').innerText = `হ্যালো, ${user.first_name || 'ইউজার'}!`;
@@ -145,24 +139,21 @@
             document.getElementById('balance').innerText = currentBalance;
         }
 
-        // --- আইপি এবং ডিভাইস ট্র্যাকিং লজিক ---
+        // আইপি ট্র্যাকিং
         let userIP = "unknown";
-        const COOLDOWN_TIME = 60; // ৬০ সেকেন্ড (১ মিনিট)
+        const COOLDOWN_TIME = 60; // ১ মিনিট কুলডাউন
 
-        // API থেকে ইউজারের পাবলিক আইপি সংগ্রহ করা
+        // পাবলিক আইপি লোড করা
         fetch('https://api.ipify.org?format=json')
             .then(res => res.json())
             .then(data => {
                 userIP = data.ip;
                 document.getElementById('user-ip').innerText = userIP;
-                
-                // আইপি সফলভাবে লোড হওয়ার পর লিমিট এবং কুলডাউন চেক করা হবে
                 initializeSystem();
             })
             .catch(err => {
                 console.error("IP Fetch failed", err);
                 document.getElementById('user-ip').innerText = "Failed to verify IP";
-                // আইপি লোড না হলে ব্যাকআপ হিসেবে লোকাল ট্র্যাকিং চালানো হবে
                 userIP = "fallback_" + (user ? user.id : "guest");
                 initializeSystem();
             });
@@ -172,7 +163,7 @@
             return today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
         }
 
-        // আইপি-ভিত্তিক ডেইলি কাউন্টার চেক
+        // আইপি-ভিত্তিক ডেইলি লিমিট চেক (সর্বোচ্চ ২০ বার)
         function getDailyCount() {
             const savedDate = localStorage.getItem(`ad_date_${userIP}`);
             const today = getTodayDate();
@@ -197,13 +188,12 @@
             document.getElementById('limit-text').innerText = `আজকের বিজ্ঞাপন বাকি আছে: ${remaining}/২০`;
         }
 
-        // আইপি লোড হবার পর সিস্টেম সচল করার ফাংশন
         function initializeSystem() {
             updateLimitUI();
             checkGlobalCooldown();
         }
 
-        // --- বিজ্ঞাপন প্রসেসিং এবং টাইমার লজিক ---
+        // --- বিজ্ঞাপন প্রসেসিং লজিক ---
         let isAdRunning = false;
 
         // আইপি-ভিত্তিক গ্লোবাল কুলডাউন চেক
@@ -216,58 +206,52 @@
                 const remainingCooldown = COOLDOWN_TIME - timeDiff;
                 startCooldownCountdown(remainingCooldown);
             } else {
-                resetAllButtons();
+                resetButton();
             }
         }
 
-        function startAdProcess(adType) {
+        function startAdProcess() {
             if (isAdRunning) return;
 
-            // আইপি-ভিত্তিক ডেইলি লিমিট চেক
+            // ডেইলি লিমিট চেক (সর্বোচ্চ ২০ বার)
             if (getDailyCount() >= 20) {
                 alert("এই ডিভাইস/আইপি থেকে আজকের ২০টি বিজ্ঞাপনের লিমিট শেষ হয়ে গেছে। আগামীকাল আবার চেষ্টা করুন।");
                 return;
             }
 
             const riBtn = document.getElementById('ri-btn');
-            const rpBtn = document.getElementById('rp-btn');
-            const targetBtn = adType === 'ri' ? riBtn : rpBtn;
             
             isAdRunning = true;
             riBtn.disabled = true;
-            rpBtn.disabled = true;
-            targetBtn.innerText = "বিজ্ঞাপন লোড হচ্ছে...";
+            riBtn.innerText = "বিজ্ঞাপন লোড হচ্ছে...";
 
-            // বিজ্ঞাপন চালু করা
+            // বিজ্ঞাপন শো করা
             if (typeof show_11361400 === 'function') {
                 
-                const adPromise = adType === 'ri' ? show_11361400() : show_11361400('pop');
-
-                adPromise.then(() => {
-                    console.log("Ad successfully rendered");
+                show_11361400().then(() => {
+                    console.log("Ad rendered");
                 }).catch(e => {
-                    console.error("Ad failed", e);
+                    console.error("Ad fail", e);
                 });
 
                 // ১৫ সেকেন্ডের ওয়াচ টাইমার
                 let timeLeft = 15;
-                targetBtn.innerText = `অপেক্ষা করুন (${timeLeft}s)`;
+                riBtn.innerText = `অপেক্ষা করুন (${timeLeft}s)`;
 
                 const watchInterval = setInterval(() => {
                     timeLeft--;
-                    targetBtn.innerText = `অপেক্ষা করুন (${timeLeft}s)`;
+                    riBtn.innerText = `অপেক্ষা করুন (${timeLeft}s)`;
 
                     if (timeLeft <= 0) {
                         clearInterval(watchInterval);
                         
-                        const rewardPoints = adType === 'ri' ? 10 : 15;
+                        const rewardPoints = 10; // প্রতিটি বিজ্ঞাপনের জন্য ১০ পয়েন্ট
                         updateBalance(rewardPoints);
-                        incrementDailyCount(); // আইপি অনুযায়ী লিমিট বাড়ানো হলো
+                        incrementDailyCount(); // লিমিট বাড়ানো হলো
                         
-                        // লাস্ট দেখার সময় রেকর্ড (আইপি অনুযায়ী)
                         localStorage.setItem(`last_ad_time_${userIP}`, Date.now().toString());
                         
-                        alert(`অভিনন্দন! আপনি ${rewardPoints} পয়েন্ট পেয়েছেন। পরবর্তী বিজ্ঞাপনের জন্য ১ মিনিট অপেক্ষা করুন।`);
+                        alert(`অভিনন্দন! আপনি ১০ পয়েন্ট পেয়েছেন। পরবর্তী বিজ্ঞাপনের জন্য ১ মিনিট অপেক্ষা করুন।`);
                         
                         startCooldownCountdown(COOLDOWN_TIME);
                     }
@@ -275,7 +259,7 @@
 
             } else {
                 alert('বিজ্ঞাপন সার্ভিস এখন উপলব্ধ নয়।');
-                resetAllButtons();
+                resetButton();
             }
         }
 
@@ -283,45 +267,34 @@
         function startCooldownCountdown(seconds) {
             isAdRunning = true;
             const riBtn = document.getElementById('ri-btn');
-            const rpBtn = document.getElementById('rp-btn');
-
             riBtn.disabled = true;
-            rpBtn.disabled = true;
 
             let remainingTime = seconds;
             riBtn.innerText = `পরবর্তী টাস্ক (${remainingTime}s)`;
-            rpBtn.innerText = `পরবর্তী টাস্ক (${remainingTime}s)`;
 
             const cooldownInterval = setInterval(() => {
                 remainingTime--;
                 riBtn.innerText = `পরবর্তী টাস্ক (${remainingTime}s)`;
-                rpBtn.innerText = `পরবর্তী টাস্ক (${remainingTime}s)`;
 
                 if (remainingTime <= 0) {
                     clearInterval(cooldownInterval);
-                    resetAllButtons();
+                    resetButton();
                 }
             }, 1000);
         }
 
-        function resetAllButtons() {
+        // বাটন রিসেট করা
+        function resetButton() {
             isAdRunning = false;
-            
             const riBtn = document.getElementById('ri-btn');
-            const rpBtn = document.getElementById('rp-btn');
 
             riBtn.disabled = false;
-            rpBtn.disabled = false;
-
             riBtn.innerText = "Rewarded Interstitial দেখুন";
-            rpBtn.innerText = "Rewarded Popup দেখুন";
 
-            // লিমিট শেষ হলে স্থায়ীভাবে লক
+            // লিমিট শেষ হলে বাটন স্থায়ীভাবে লক করা হবে
             if (getDailyCount() >= 20) {
                 riBtn.disabled = true;
-                rpBtn.disabled = true;
                 riBtn.innerText = "আজকের লিমিট শেষ";
-                rpBtn.innerText = "আজকের লিমিট শেষ";
             }
         }
     </script>
